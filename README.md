@@ -11,20 +11,22 @@ A fast, interactive Sudoku solver written in C that uses backtracking to find va
 
 ## Usage
 
-./sudoku_solver <file_path>
+```bash
+./sudoku_solver <file path>
+```
 
 Replace <file_path> with the path to your Sudoku puzzle file. The file should contain 81 digits (0–9), where 0 represents an empty cell.
 
 ### Example puzzle file:
 
-5 3 0 0 7 0 0 0 0
-6 0 0 1 9 5 0 0 0
-0 9 8 0 0 0 0 6 0
-8 0 0 0 6 0 0 0 3
-4 0 0 8 0 3 0 0 1
-7 0 0 0 2 0 0 0 6
-0 6 0 0 0 0 2 8 0
-0 0 0 4 1 9 0 0 5
+5 3 0 0 7 0 0 0 0\
+6 0 0 1 9 5 0 0 0\
+0 9 8 0 0 0 0 6 0\
+8 0 0 0 6 0 0 0 3\
+4 0 0 8 0 3 0 0 1\
+7 0 0 0 2 0 0 0 6\
+0 6 0 0 0 0 2 8 0\
+0 0 0 4 1 9 0 0 5\
 0 0 0 0 8 0 0 7 9
 
 ## Building

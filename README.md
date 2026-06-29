@@ -11,9 +11,9 @@ A fast, interactive Sudoku solver written in C that uses backtracking to find va
 
 ## Usage
 
-./sudoku_solver <puzzle_file>
+./sudoku_solver <file_path>
 
-Replace <puzzle_file> with the path to your Sudoku puzzle file. The file should contain 81 digits (0–9), where 0 represents an empty cell.
+Replace <file_path> with the path to your Sudoku puzzle file. The file should contain 81 digits (0–9), where 0 represents an empty cell.
 
 ### Example puzzle file:
 
@@ -36,12 +36,15 @@ Replace <puzzle_file> with the path to your Sudoku puzzle file. The file should 
 
 ### On Linux (Ubuntu/Debian):
 
-sudo apt-get install libraylib-dev
-gcc sudoku_solver.c -o sudoku_solver -lraylib -lm
+```bash
+gcc main.c -o sudoku_solver -lraylib
+```
 
 ### Compile and run:
 
-./sudoku_solver puzzle.txt
+```bash
+./sudoku_solver <file path>
+```
 
 ## How It Works
 

@@ -15,7 +15,7 @@
 #define NUMBERS_SIZE 90
 #define NUMBERS_COLOR BLACK
 #define TIME_COLOR GRAY
-#define TIME_SIZE 40
+#define TIME_SIZE 70
 #define EMPTY 0
 #define DELAY 100
 
@@ -32,6 +32,9 @@ typedef struct
     int grid[9][9];
     int solving;
     int solved;
+    double start_time;
+    double end_time;
+    pthread_mutex_t mutex;
 } SolverThread;
 
 Set *init_set()
@@ -209,12 +212,17 @@ void print_numbers(SolverThread *solver)
     }
 }
 
-void print_time() // change so that a timer is started when the solver starts and ends when it is solved.
-{
-    double dtime = GetTime();
+void print_timer(SolverThread *solver) {
     char stime[30];
-    snprintf(stime, 30, "%f", dtime);
-    DrawText(stime, CELL_SIZE * 5, 10, TIME_SIZE, TIME_COLOR);
+    if (!solver->solved)
+    {
+        snprintf(stime, 30, "%f", GetTime() - solver->start_time);
+        DrawText(stime, CELL_SIZE * 3, 9 * CELL_SIZE + 1 + 25, TIME_SIZE, TIME_COLOR);
+    }
+    else {
+        snprintf(stime, 30, "%f", solver->end_time - solver->start_time);
+        DrawText(stime, CELL_SIZE * 3, 9 * CELL_SIZE + 1 + 25, TIME_SIZE, GRID_COLOR);
+    }
 }
 
 int calc_block(int i, int j)
@@ -291,6 +299,7 @@ void *solve_thread(void *arg)
 {
     SolverThread *solver = (SolverThread *)arg;
     solve_sudoku(solver->grid);
+    solver->end_time = GetTime();
     solver->solved = true;
     solver->solving = false;
     return NULL;
@@ -298,6 +307,7 @@ void *solve_thread(void *arg)
 
 int main(int argc, char **argv)
 {
+    // Parsing input:
     char *filepath;
     struct stat buffer;
     if (argc == 1)
@@ -322,10 +332,10 @@ int main(int argc, char **argv)
     }
 
     // Opening window and drawing grid:
-    InitWindow(CELL_SIZE * 9 + 1, CELL_SIZE * 9 + 1, "Sudoku");
+    InitWindow(CELL_SIZE * 9 + 1, CELL_SIZE * 9 + 1 + CELL_SIZE, "Sudoku"); // Space for the grid + timer.
     SetTargetFPS(60);
 
-    RenderTexture2D screen = LoadRenderTexture(CELL_SIZE * 9 + 1, CELL_SIZE * 9 + 1);
+    RenderTexture2D screen = LoadRenderTexture(CELL_SIZE * 9 + 1, CELL_SIZE * 9 + 1 + CELL_SIZE);
     BeginTextureMode(screen);
     ClearBackground(WHITE);
     print_grid();
@@ -335,6 +345,8 @@ int main(int argc, char **argv)
     SolverThread *solver = malloc(sizeof(SolverThread));
     get_puzzle_from_file(filepath, solver);
     pthread_t thread;
+    solver->start_time = GetTime(); // Recording starting time.
+    pthread_mutex_init(&solver->mutex, NULL);
     pthread_create(&thread, NULL, solve_thread, solver);
 
     while (!WindowShouldClose())
@@ -343,6 +355,7 @@ int main(int argc, char **argv)
         ClearBackground(WHITE);
         print_grid();
         print_numbers(solver);
+        print_timer(solver);
         EndTextureMode();
         BeginDrawing();
         DrawTexturePro(screen.texture, (Rectangle){0, 0, (float)screen.texture.width, -(float)screen.texture.height}, (Rectangle){0, 0, (float)screen.texture.width, (float)screen.texture.height}, (Vector2){0, 0}, 0.0f, WHITE);
@@ -350,6 +363,7 @@ int main(int argc, char **argv)
     }
 
     pthread_join(thread, NULL);
+    pthread_mutex_destroy(&solver->mutex);
 
     CloseWindow();
     return 0;

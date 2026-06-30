@@ -207,22 +207,44 @@ void print_numbers(SolverThread *solver)
             Vector2 text_size = MeasureTextEx(def_font, c, NUMBERS_SIZE, NUMBERS_SIZE * .1f);
             Vector2 text_pos = (Vector2){CELL_SIZE * j + Lerp(0.0f, CELL_SIZE - text_size.x, 0.5f), CELL_SIZE * i + 5 + Lerp(0.0f, CELL_SIZE - text_size.y, 0.5f)};
 
-            DrawTextEx(def_font, c, text_pos, (float)NUMBERS_SIZE, NUMBERS_SIZE*0.2f, GRID_COLOR);
+            DrawTextEx(def_font, c, text_pos, (float)NUMBERS_SIZE, NUMBERS_SIZE * 0.2f, GRID_COLOR);
         }
     }
 }
 
-void print_timer(SolverThread *solver) {
+void print_timer(SolverThread *solver)
+{
     char stime[30];
-    if (!solver->solved)
+    if (solver->solving)
     {
-        snprintf(stime, 30, "%f", GetTime() - solver->start_time);
-        DrawText(stime, CELL_SIZE * 3, 9 * CELL_SIZE + 1 + 25, TIME_SIZE, TIME_COLOR);
+        if (!solver->solved)
+        {
+            snprintf(stime, 30, "%f", GetTime() - solver->start_time);
+            Font def_font = GetFontDefault();
+            Vector2 text_size = MeasureTextEx(def_font, stime, TIME_SIZE, NUMBERS_SIZE * .1f);
+            Rectangle bottom = (Rectangle){0.0f, (float)CELL_SIZE * 9, (float)CELL_SIZE * 9, (float)CELL_SIZE};
+            Vector2 text_pos = (Vector2){bottom.x + Lerp(0.0f, bottom.width - text_size.x, 0.5f), bottom.y + Lerp(0.0f, bottom.height - text_size.y, 0.5f)};
+            DrawTextEx(def_font, stime, text_pos, TIME_SIZE, TIME_SIZE * 0.1, GRID_COLOR);
+        }
+        else
+        {
+            snprintf(stime, 30, "%f", solver->end_time - solver->start_time);
+            Font def_font = GetFontDefault();
+            Vector2 text_size = MeasureTextEx(def_font, stime, TIME_SIZE, NUMBERS_SIZE * .1f);
+            Rectangle bottom = (Rectangle){0.0f, (float)CELL_SIZE * 9, (float)CELL_SIZE * 9, (float)CELL_SIZE};
+            Vector2 text_pos = (Vector2){bottom.x + Lerp(0.0f, bottom.width - text_size.x, 0.5f), bottom.y + Lerp(0.0f, bottom.height - text_size.y, 0.5f)};
+            DrawTextEx(def_font, stime, text_pos, TIME_SIZE, TIME_SIZE * 0.1, GRID_COLOR);
+        }
     }
-    else {
-        snprintf(stime, 30, "%f", solver->end_time - solver->start_time);
-        DrawText(stime, CELL_SIZE * 3, 9 * CELL_SIZE + 1 + 25, TIME_SIZE, GRID_COLOR);
-    }
+}
+
+void print_start_message()
+{
+    Font def_font = GetFontDefault();
+    Vector2 text_size = MeasureTextEx(def_font, "Press R to start solver", TIME_SIZE * 0.8, NUMBERS_SIZE * .1f);
+    Rectangle bottom = (Rectangle){0.0f, (float)CELL_SIZE * 9, (float)CELL_SIZE * 9, (float)CELL_SIZE};
+    Vector2 text_pos = (Vector2){bottom.x + Lerp(0.0f, bottom.width - text_size.x, 0.5f), bottom.y + Lerp(0.0f, bottom.height - text_size.y, 0.5f)};
+    DrawTextEx(def_font, "Press R to start solver", text_pos, TIME_SIZE * 0.8, TIME_SIZE * 0.8 * 0.1, GRID_COLOR);
 }
 
 int calc_block(int i, int j)
@@ -301,7 +323,6 @@ void *solve_thread(void *arg)
     solve_sudoku(solver->grid);
     solver->end_time = GetTime();
     solver->solved = true;
-    solver->solving = false;
     return NULL;
 }
 
@@ -339,21 +360,30 @@ int main(int argc, char **argv)
     BeginTextureMode(screen);
     ClearBackground(WHITE);
     print_grid();
+    print_start_message();
     EndTextureMode();
 
     // Initialization:
     SolverThread *solver = malloc(sizeof(SolverThread));
     get_puzzle_from_file(filepath, solver);
     pthread_t thread;
-    solver->start_time = GetTime(); // Recording starting time.
     pthread_mutex_init(&solver->mutex, NULL);
-    pthread_create(&thread, NULL, solve_thread, solver);
 
     while (!WindowShouldClose())
     {
+        // Cheking for start condition:
+        if (!solver->solving && IsKeyPressed(KEY_R))
+        {
+            solver->solving = 1;
+            solver->start_time = GetTime(); // Recording starting time.
+            pthread_create(&thread, NULL, solve_thread, solver);
+        }
+
         BeginTextureMode(screen);
         ClearBackground(WHITE);
         print_grid();
+        if (!solver->solving)
+            print_start_message();
         print_numbers(solver);
         print_timer(solver);
         EndTextureMode();

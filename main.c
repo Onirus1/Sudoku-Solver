@@ -7,7 +7,8 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-#include "raylib.h"
+#include <raylib.h>
+#include <raymath.h> // required for Lerp.
 
 #define CELL_SIZE 100
 #define GRID_COLOR BLACK
@@ -197,13 +198,18 @@ void print_numbers(SolverThread *solver)
     {
         for (int j = 0; j < 9; j++)
         {
+            // Preparing everything needed to center align the text in each cell:
+            Font def_font = GetFontDefault();
             char c[] = {solver->grid[i][j] == EMPTY ? ' ' : '0' + solver->grid[i][j], '\0'};
-            DrawText(c, CELL_SIZE * j + 40, CELL_SIZE * i + 10, NUMBERS_SIZE, GRID_COLOR);
+            Vector2 text_size = MeasureTextEx(def_font, c, NUMBERS_SIZE, NUMBERS_SIZE * .1f);
+            Vector2 text_pos = (Vector2){CELL_SIZE * j + Lerp(0.0f, CELL_SIZE - text_size.x, 0.5f), CELL_SIZE * i + 5 + Lerp(0.0f, CELL_SIZE - text_size.y, 0.5f)};
+
+            DrawTextEx(def_font, c, text_pos, (float)NUMBERS_SIZE, NUMBERS_SIZE*0.2f, GRID_COLOR);
         }
     }
 }
 
-void print_time()
+void print_time() // change so that a timer is started when the solver starts and ends when it is solved.
 {
     double dtime = GetTime();
     char stime[30];

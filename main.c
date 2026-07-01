@@ -1,10 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
-
-#define _POSIX_C_SOURCE 199309L
-#include <time.h>
-#include <unistd.h>
 #include <sys/stat.h>
 
 #include <raylib.h>
@@ -21,12 +17,6 @@
 
 #define index(x, y) 9 * (x) + (y)
 
-// Set data structure implementation, an array of 9 digits, 0 if not in set, 1 if in set.
-typedef struct
-{
-    int digits[9];
-} Set;
-
 typedef struct
 {
     int grid[9][9];
@@ -36,148 +26,6 @@ typedef struct
     double end_time;
     pthread_mutex_t mutex;
 } SolverThread;
-
-Set *init_set()
-{
-    Set *set = (Set *)malloc(sizeof(Set));
-    if (set == NULL)
-    {
-        printf("Failed to allocate memory for the set!\n");
-        return NULL;
-    }
-    for (int i = 0; i < 9; i++)
-    {
-        set->digits[i] = 1;
-    }
-    return set;
-}
-
-Set *empty_set()
-{
-    Set *set = (Set *)malloc(sizeof(Set));
-    if (set == NULL)
-    {
-        printf("Failed to allocate memory for the set!\n");
-        return NULL;
-    }
-    return set;
-}
-
-int insert_set(Set *set, int value)
-{
-    if (value < 0 || value > 8)
-    {
-        printf("Value for insertion not between 1 and 9!\n");
-        return -1;
-    }
-    set->digits[value] = 1;
-    return 1;
-}
-
-int search_set(Set *set, int value)
-{
-    if (value < 0 || value > 8)
-    {
-        printf("Value for search not between 1 and 9!\n");
-        return -1;
-    }
-    return set->digits[value];
-}
-
-int delete_set(Set *set, int value)
-{
-    if (value < 0 || value > 8)
-    {
-        printf("Value for deletion not between 1 and 9!\n");
-        return -1;
-    }
-    set->digits[value] = 0;
-    return 1;
-}
-
-char *print_set(Set *set)
-{
-    char *result = malloc(10);
-
-    for (int i = 0; i < 9; i++)
-    {
-        if (search_set(set, i))
-            result[i] = '0' + i + 1;
-        else
-            result[i] = ' ';
-    }
-    result[9] = '\0';
-
-    return result;
-}
-
-void init_set_array_full(Set **sets)
-{
-    Set *set;
-    for (int i = 0; i < 9; i++)
-    {
-        for (int j = 0; j < 9; j++)
-        {
-            set = init_set();
-            sets[i + 9 * j] = set;
-        }
-    }
-}
-
-void init_set_array_empty(Set **sets)
-{
-    Set *set;
-    for (int i = 0; i < 9; i++)
-    {
-        set = init_set();
-        for (int j = 0; j < 9; j++)
-        {
-            set->digits[j] = 0;
-        }
-        sets[i] = set;
-    }
-}
-
-int size_set(Set *set)
-{
-    int count = 0;
-    for (int i = 0; i < 9; i++)
-    {
-        count += set->digits[i];
-    }
-    return count;
-}
-
-Set *set_union(Set *set1, Set *set2)
-{
-    Set *result = empty_set();
-    for (int i = 0; i < 9; i++)
-    {
-        result->digits[i] = set1->digits[i] || set2->digits[i];
-    }
-    return result;
-}
-
-Set *set_diff(Set *set1, Set *set2)
-{
-    Set *result = empty_set();
-    for (int i = 0; i < 9; i++)
-    {
-        result->digits[i] = set1->digits[i] && !set2->digits[i];
-    }
-    return result;
-}
-
-Set *set_compl(Set *set)
-{
-    Set *result = empty_set();
-    for (int i = 0; i < 9; i++)
-    {
-        result->digits[i] = !set->digits[i];
-    }
-    return result;
-}
-//------------------------------------------------------------
 
 void print_grid()
 {
@@ -253,7 +101,7 @@ int calc_block(int i, int j)
 }
 
 void get_puzzle_from_file(char *path, SolverThread *solver)
-{ // we assume that there are 9 rows with 0 in place of empty space.
+{ // we assume that there are 9 rows, 9 columns with 0 in place of empty space.
     FILE *f = fopen(path, "r");
     int count = 0;
     int num;

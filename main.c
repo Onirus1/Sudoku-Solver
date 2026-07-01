@@ -27,6 +27,11 @@ typedef struct
     pthread_mutex_t mutex;
 } SolverThread;
 
+int calc_block(int i, int j)
+{
+    return (i / 3) * 3 + (j / 3);
+}
+
 void print_grid()
 {
     for (int i = 0; i < 9; i++)
@@ -66,23 +71,15 @@ void print_timer(SolverThread *solver)
     if (solver->solving)
     {
         if (!solver->solved)
-        {
             snprintf(stime, 30, "%f", GetTime() - solver->start_time);
-            Font def_font = GetFontDefault();
-            Vector2 text_size = MeasureTextEx(def_font, stime, TIME_SIZE, NUMBERS_SIZE * .1f);
-            Rectangle bottom = (Rectangle){0.0f, (float)CELL_SIZE * 9, (float)CELL_SIZE * 9, (float)CELL_SIZE};
-            Vector2 text_pos = (Vector2){bottom.x + Lerp(0.0f, bottom.width - text_size.x, 0.5f), bottom.y + Lerp(0.0f, bottom.height - text_size.y, 0.5f)};
-            DrawTextEx(def_font, stime, text_pos, TIME_SIZE, TIME_SIZE * 0.1, GRID_COLOR);
-        }
         else
-        {
             snprintf(stime, 30, "%f", solver->end_time - solver->start_time);
-            Font def_font = GetFontDefault();
-            Vector2 text_size = MeasureTextEx(def_font, stime, TIME_SIZE, NUMBERS_SIZE * .1f);
-            Rectangle bottom = (Rectangle){0.0f, (float)CELL_SIZE * 9, (float)CELL_SIZE * 9, (float)CELL_SIZE};
-            Vector2 text_pos = (Vector2){bottom.x + Lerp(0.0f, bottom.width - text_size.x, 0.5f), bottom.y + Lerp(0.0f, bottom.height - text_size.y, 0.5f)};
-            DrawTextEx(def_font, stime, text_pos, TIME_SIZE, TIME_SIZE * 0.1, GRID_COLOR);
-        }
+
+        Font def_font = GetFontDefault();
+        Vector2 text_size = MeasureTextEx(def_font, stime, TIME_SIZE, NUMBERS_SIZE * .1f);
+        Rectangle bottom = (Rectangle){0.0f, (float)CELL_SIZE * 9, (float)CELL_SIZE * 9, (float)CELL_SIZE};
+        Vector2 text_pos = (Vector2){bottom.x + Lerp(0.0f, bottom.width - text_size.x, 0.5f), bottom.y + Lerp(0.0f, bottom.height - text_size.y, 0.5f)};
+        DrawTextEx(def_font, stime, text_pos, TIME_SIZE, TIME_SIZE * 0.1, GRID_COLOR);
     }
 }
 
@@ -95,22 +92,47 @@ void print_start_message()
     DrawTextEx(def_font, "Press R to start solver", text_pos, TIME_SIZE * 0.8, TIME_SIZE * 0.8 * 0.1, GRID_COLOR);
 }
 
-int calc_block(int i, int j)
-{
-    return (i / 3) * 3 + (j / 3);
-}
-
-void get_puzzle_from_file(char *path, SolverThread *solver)
+int get_puzzle_from_file(char *path, SolverThread *solver)
 { // we assume that there are 9 rows, 9 columns with 0 in place of empty space.
     FILE *f = fopen(path, "r");
+    if (f == NULL)
+    {
+        fprintf(stderr, "Error: couldn't open file %s!\n", path);
+        return 1;
+    }
+
     int count = 0;
     int num;
 
-    while (fscanf(f, "%d", &num) == 1)
+    while (fscanf(f, "%d", &num) == 1 && count < 81)
     {
+        if (num < 0 || num > 10)
+        { // if we encounter a number that is not between 0 and 9, close the file and return an error.
+            fprintf(stderr, "Error: number %d read from file is not between 0 and 9!\n", num);
+            fclose(f);
+            return 1;
+        }
+
         solver->grid[count / 9][count % 9] = num;
         count++;
     }
+
+    if (count > 81) // if we encounter more than 81 numbers, close the file and return an error.
+        {
+            fprintf(stderr, "Error: read more than 81 numbers in input file!\n");
+            fclose(f);
+            return 1;
+        }
+
+    else if (count < 81)
+    {
+        fprintf(stderr, "Error: read less than 81 numbers in input file!\n");
+        fclose(f);
+        return 1;
+    }
+
+    fclose(f);
+    return 0;
 }
 
 int check_cell_valid(int grid[9][9], int row, int col, int val) // checks if val can be placed in cell (row, col).
@@ -200,22 +222,24 @@ int main(int argc, char **argv)
         }
     }
 
-    // Opening window and drawing grid:
+    // Opening window and initializing texture:
     InitWindow(CELL_SIZE * 9 + 1, CELL_SIZE * 9 + 1 + CELL_SIZE, "Sudoku"); // Space for the grid + timer.
     SetTargetFPS(60);
 
     RenderTexture2D screen = LoadRenderTexture(CELL_SIZE * 9 + 1, CELL_SIZE * 9 + 1 + CELL_SIZE);
-    BeginTextureMode(screen);
-    ClearBackground(WHITE);
-    print_grid();
-    print_start_message();
-    EndTextureMode();
 
     // Initialization:
-    SolverThread *solver = malloc(sizeof(SolverThread));
-    get_puzzle_from_file(filepath, solver);
     pthread_t thread;
+    SolverThread *solver = calloc(1, sizeof(SolverThread));
     pthread_mutex_init(&solver->mutex, NULL);
+
+    int error = get_puzzle_from_file(filepath, solver);
+    if (error) // if for whatever reason we got an error, exit with 1.
+    {
+        pthread_mutex_destroy(&solver->mutex);
+        free(solver);
+        return 1;
+    }
 
     while (!WindowShouldClose())
     {
@@ -241,7 +265,10 @@ int main(int argc, char **argv)
     }
 
     pthread_join(thread, NULL);
+
+    // Preparing for shutdown:
     pthread_mutex_destroy(&solver->mutex);
+    free(solver);
 
     CloseWindow();
     return 0;
